@@ -1,0 +1,8 @@
+[build]
+pip install build
+python -m build
+[test]
+pip install dist/{package-0.1.0}.tar.gz
+[deploy]
+pip install twine
+twine upload dist/*
