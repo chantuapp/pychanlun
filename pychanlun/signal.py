@@ -2,8 +2,7 @@ from enum import IntEnum
 from typing import Dict, Optional, List
 
 import pandas as pd
-
-from pychanlun.pivot import Pivot, Range
+from pychanlun.pivot import Pivot
 
 
 class SignalType(IntEnum):
@@ -27,14 +26,14 @@ class Signal(Pivot):
 
         stroke_df = self.strokes[interval]
         stroke_pivot_df = self.stroke_pivots[interval]
-        if stroke_df is not None or stroke_pivot_df is not None:
+        if stroke_df is not None and stroke_pivot_df is not None:
             self.stroke_signals[interval] = self._generate_signals(stroke_df, stroke_pivot_df)
         else:
             self.stroke_signals[interval] = None
 
         segment_df = self.segments[interval]
         segment_pivot_df = self.segment_pivots[interval]
-        if segment_df is not None or segment_pivot_df is not None:
+        if segment_df is not None and segment_pivot_df is not None:
             self.segment_signals[interval] = self._generate_signals(segment_df, segment_pivot_df)
         else:
             self.segment_signals[interval] = None
@@ -46,40 +45,72 @@ class Signal(Pivot):
         pivots = list(pivot_df.itertuples())
         rows = []
         for index in range(0, len(pivots) - 3, 2):
-            curr_pivot = pivots[index]
-            if curr_pivot.divergence <= 0:
-                continue
+            curr_pivot = self._get_range(pivots, index)
+            next_pivot = self._get_range(pivots, index + 2)
+            segments = list(segment_df.loc[curr_pivot.end.Index: next_pivot.end.Index].itertuples())
 
-            next_range = self._get_range(pivots, index + 2)
-            self._check_first_second_signals(rows, segment_df, next_range)
-            self._check_third_signals(rows, segment_df, next_range)
+            if curr_pivot.start.status > 0:
+                if curr_pivot.end.level > curr_pivot.start.level:
+                    self._check_first_second_sell(rows, segments, curr_pivot, next_pivot)
+                elif curr_pivot.end.level < curr_pivot.start.level:
+                    self._check_first_second_buy(rows, segments, curr_pivot, next_pivot)
+
+            if curr_pivot.start.status == 0:
+                self._check_third_sell(rows, segments, curr_pivot, next_pivot)
+                self._check_third_buy(rows, segments, curr_pivot, next_pivot)
 
         return self.to_dataframe(rows, ['high', 'low', 'signal'])
 
-    def _check_first_second_signals(self, rows: List, segment_df: pd.DataFrame, next_range: Range) -> None:
-        segments = list(segment_df.loc[next_range.start.Index:].itertuples())
+    def _check_first_second_sell(self, rows: List, segments: List, curr_pivot: tuple, next_pivot: tuple) -> None:
+        if len(segments) < 4:
+            return
+
+        for i in range(len(segments) - 3):
+            next_segment_1 = segments[i + 1]
+            next_segment_3 = segments[i + 3]
+
+            if self.is_top(next_segment_1) and next_segment_3.high < next_segment_1.high:
+                rows.append(next_segment_1._replace(signal=SignalType.FIRST_SELL))
+                rows.append(next_segment_3._replace(signal=SignalType.SECOND_SELL))
+                return
+
+    def _check_first_second_buy(self, rows: List, segments: List, curr_pivot: tuple, next_pivot: tuple) -> None:
+        if len(segments) < 4:
+            return
+
+        for i in range(len(segments) - 3):
+            next_segment_1 = segments[i + 1]
+            next_segment_3 = segments[i + 3]
+
+            if self.is_bottom(next_segment_1) and next_segment_3.low > next_segment_1.low:
+                rows.append(next_segment_1._replace(signal=SignalType.FIRST_BUY))
+                rows.append(next_segment_3._replace(signal=SignalType.SECOND_BUY))
+                return
+
+    def _check_third_sell(self, rows: List, segments: List, curr_pivot: tuple, next_pivot: tuple) -> None:
         if len(segments) < 3:
             return
 
-        next_segment_1 = segments[0]
-        next_segment_3 = segments[2]
+        next_segment_1 = segments[1]
+        next_segment_2 = segments[2]
 
-        if self.is_top(next_segment_1) and next_segment_3.high < next_segment_1.high:
-            rows.append(next_segment_1._replace(signal=SignalType.FIRST_SELL))
-            rows.append(next_segment_3._replace(signal=SignalType.SECOND_SELL))
-        elif self.is_bottom(next_segment_1) and next_segment_3.low > next_segment_1.low:
-            rows.append(next_segment_1._replace(signal=SignalType.FIRST_BUY))
-            rows.append(next_segment_3._replace(signal=SignalType.SECOND_BUY))
+        if self.is_top(next_segment_1):
+            if next_segment_1.high < curr_pivot.low:
+                rows.append(next_segment_1._replace(signal=SignalType.THIRD_SELL))
+        if self.is_top(next_segment_2):
+            if next_segment_2.high < curr_pivot.low:
+                rows.append(next_segment_2._replace(signal=SignalType.THIRD_SELL))
 
-    def _check_third_signals(self, rows: List, segment_df: pd.DataFrame, next_range: Range) -> None:
-        segments = list(segment_df.loc[next_range.end.Index:].itertuples())
+    def _check_third_buy(self, rows: List, segments: List, curr_pivot: tuple, next_pivot: tuple) -> None:
         if len(segments) < 3:
             return
 
-        next_segment_2 = segments[1]
-        next_segment_3 = segments[2]
+        next_segment_1 = segments[1]
+        next_segment_2 = segments[2]
 
-        if self.is_top(next_segment_2) and next_segment_3.low > next_range.high:
-            rows.append(next_segment_3._replace(signal=SignalType.THIRD_BUY))
-        elif self.is_bottom(next_segment_2) and next_segment_3.low < next_range.low:
-            rows.append(next_segment_3._replace(signal=SignalType.THIRD_SELL))
+        if self.is_bottom(next_segment_1):
+            if next_segment_1.low > curr_pivot.high:
+                rows.append(next_segment_1._replace(signal=SignalType.THIRD_BUY))
+        if self.is_bottom(next_segment_2):
+            if next_segment_2.low > curr_pivot.high:
+                rows.append(next_segment_2._replace(signal=SignalType.THIRD_BUY))

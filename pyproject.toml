@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "PyChanLun"
-version = "0.1.5"
+version = "0.1.6"
 description = "Applying the Chan Theory (Chan Lun) to analyze stock trading information."
 readme = "README.md"
 license = "MIT"

@@ -24,7 +24,7 @@ class Chan(Signal):
             return None
 
         has_fractal = fractal_df['high'].notna() | fractal_df['low'].notna()
-        return fractal_df[has_fractal][['high', 'low']]
+        return fractal_df[has_fractal]
 
     def get_strokes(self, interval: str) -> Optional[pd.DataFrame]:
         stroke_df = self.strokes[interval]
@@ -54,7 +54,7 @@ class Chan(Signal):
         if signal_df is None:
             return None
 
-        return self._format_signals(signal_df)
+        return self._format_signals(signal_df, 'stroke')
 
     def get_segments(self, interval: str) -> Optional[pd.DataFrame]:
         segment_df = self.segments[interval]
@@ -84,7 +84,7 @@ class Chan(Signal):
         if signal_df is None:
             return None
 
-        return self._format_signals(signal_df)
+        return self._format_signals(signal_df, 'segment')
 
     @staticmethod
     def _format_pivots(df: pd.DataFrame) -> pd.DataFrame:
@@ -97,27 +97,27 @@ class Chan(Signal):
             'exit_low': df['low'].values[1::2],
             'entry_macd': df['macd'].values[::2],
             'exit_macd': df['macd'].values[1::2],
-            'trend': df['trend'].values[::2],
-            'divergence': df['divergence'].values[::2]
+            'level': df['level'].values[::2],
+            'status': df['status'].values[::2]
         })
         df['high'] = df['entry_high'].fillna(df['exit_high'])
         df['low'] = df['entry_low'].fillna(df['exit_low'])
         df.set_index('datetime', inplace=True)
-        return df[['end', 'high', 'low', 'entry_macd', 'exit_macd', 'trend', 'divergence']]
+        return df[['end', 'high', 'low', 'entry_macd', 'exit_macd', 'level', 'status']]
 
     @staticmethod
     def _format_trends(df: pd.DataFrame) -> pd.DataFrame:
         df = pd.DataFrame({
             'datetime': df.index.values[::2],
             'end': df.index.values[1::2],
-            'entry_price': df['price'].values[::2],
-            'exit_price': df['price'].values[1::2]
+            'entry': df['price'].values[::2],
+            'exit': df['price'].values[1::2]
         })
         df.set_index('datetime', inplace=True)
-        return df[['end', 'entry_price', 'exit_price']]
+        return df[['end', 'entry', 'exit']]
 
     @staticmethod
-    def _format_signals(df: pd.DataFrame) -> pd.DataFrame:
+    def _format_signals(df: pd.DataFrame, name: str) -> pd.DataFrame:
         df = pd.DataFrame(df)
-        df['price'] = df['high'].fillna(df['low'])
-        return df[['price', 'signal']]
+        df[name] = df['high'].fillna(df['low'])
+        return df[[name, 'signal']]
