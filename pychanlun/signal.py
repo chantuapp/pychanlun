@@ -2,7 +2,7 @@ from enum import IntEnum
 from typing import Dict, Optional, List
 
 import pandas as pd
-from pychanlun.pivot import Pivot
+from pychanlun.pivot import Pivot, Range
 
 
 class SignalType(IntEnum):
@@ -43,7 +43,9 @@ class Signal(Pivot):
         segment_df['signal'] = 0
 
         pivots = list(pivot_df.itertuples())
+
         rows = []
+
         for index in range(0, len(pivots) - 3, 2):
             curr_pivot = self._get_range(pivots, index)
             next_pivot = self._get_range(pivots, index + 2)
@@ -51,17 +53,17 @@ class Signal(Pivot):
 
             if curr_pivot.start.status > 0:
                 if curr_pivot.end.level > curr_pivot.start.level:
-                    self._check_first_second_sell(rows, segments, curr_pivot, next_pivot)
+                    self._check_first_second_sell(rows, segments)
                 elif curr_pivot.end.level < curr_pivot.start.level:
-                    self._check_first_second_buy(rows, segments, curr_pivot, next_pivot)
+                    self._check_first_second_buy(rows, segments)
 
             if curr_pivot.start.status == 0:
-                self._check_third_sell(rows, segments, curr_pivot, next_pivot)
-                self._check_third_buy(rows, segments, curr_pivot, next_pivot)
+                self._check_third_sell(rows, segments, curr_pivot)
+                self._check_third_buy(rows, segments, curr_pivot)
 
         return self.to_dataframe(rows, ['high', 'low', 'signal'])
 
-    def _check_first_second_sell(self, rows: List, segments: List, curr_pivot: tuple, next_pivot: tuple) -> None:
+    def _check_first_second_sell(self, rows: List, segments: List) -> None:
         if len(segments) < 4:
             return
 
@@ -74,7 +76,7 @@ class Signal(Pivot):
                 rows.append(next_segment_3._replace(signal=SignalType.SECOND_SELL))
                 return
 
-    def _check_first_second_buy(self, rows: List, segments: List, curr_pivot: tuple, next_pivot: tuple) -> None:
+    def _check_first_second_buy(self, rows: List, segments: List) -> None:
         if len(segments) < 4:
             return
 
@@ -87,7 +89,7 @@ class Signal(Pivot):
                 rows.append(next_segment_3._replace(signal=SignalType.SECOND_BUY))
                 return
 
-    def _check_third_sell(self, rows: List, segments: List, curr_pivot: tuple, next_pivot: tuple) -> None:
+    def _check_third_sell(self, rows: List, segments: List, curr_pivot: Range) -> None:
         if len(segments) < 3:
             return
 
@@ -101,7 +103,7 @@ class Signal(Pivot):
             if next_segment_2.high < curr_pivot.low:
                 rows.append(next_segment_2._replace(signal=SignalType.THIRD_SELL))
 
-    def _check_third_buy(self, rows: List, segments: List, curr_pivot: tuple, next_pivot: tuple) -> None:
+    def _check_third_buy(self, rows: List, segments: List, curr_pivot: Range) -> None:
         if len(segments) < 3:
             return
 

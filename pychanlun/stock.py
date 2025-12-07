@@ -1,4 +1,3 @@
-from importlib.util import source_hash
 from typing import Dict, Optional, List, Tuple
 
 import numpy as np
@@ -33,6 +32,15 @@ class Stock:
     @staticmethod
     def _normalize_sources(df: pd.DataFrame) -> pd.DataFrame:
         df.columns = df.columns.str.lower()
+
+        required = ['open', 'high', 'low', 'close', 'volume']
+        missing = [col for col in required if col not in df.columns]
+        if missing:
+            raise ValueError(f"Missing required columns: {missing}")
+
+        if not isinstance(df.index, pd.DatetimeIndex):
+            raise ValueError(f"DataFrame index must be DatetimeIndex, got {type(df.index).__name__}")
+
         df.index.name = 'datetime'
         return df
 

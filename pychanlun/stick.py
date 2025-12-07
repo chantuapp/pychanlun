@@ -1,7 +1,6 @@
 from typing import Dict, Optional, List, Tuple
 
 import pandas as pd
-
 from pychanlun.stock import Stock
 
 
@@ -20,12 +19,14 @@ class Stick(Stock):
             return
 
         sources = list(source_df.itertuples())
+
         index = self._find_initial_direction(sources)
         if index is None:
             self.sticks[interval] = None
             return
 
-        self.sticks[interval] = self._merge_to_sticks(sources, index)
+        stick_df = self._merge_to_sticks(sources, index)
+        self.sticks[interval] = stick_df
 
     def _find_initial_direction(self, sources: List) -> Optional[int]:
         for index in range(len(sources) - 1):
@@ -34,10 +35,18 @@ class Stick(Stock):
                 return index
         return None
 
+    @staticmethod
+    def _is_going_up(curr_source: Tuple, next_source: Tuple) -> bool:
+        return curr_source.high < next_source.high and curr_source.low < next_source.low
+
+    @staticmethod
+    def _is_going_down(curr_source: Tuple, next_source: Tuple) -> bool:
+        return curr_source.high > next_source.high and curr_source.low > next_source.low
+
     def _merge_to_sticks(self, sources: List, index: int) -> Optional[pd.DataFrame]:
         rows = [sources[index]]
-        prev_source, curr_source = sources[index], sources[index + 1]
 
+        prev_source, curr_source = sources[index], sources[index + 1]
         for index in range(index + 2, len(sources)):
             next_source = sources[index]
             is_going_up = self._is_going_up(prev_source, curr_source)
@@ -52,14 +61,6 @@ class Stick(Stock):
 
         rows.append(curr_source)
         return self.to_dataframe(rows, ['high', 'low'])
-
-    @staticmethod
-    def _is_going_up(curr_source: Tuple, next_source: Tuple) -> bool:
-        return curr_source.high <= next_source.high and curr_source.low <= next_source.low
-
-    @staticmethod
-    def _is_going_down(curr_source: Tuple, next_source: Tuple) -> bool:
-        return curr_source.high >= next_source.high and curr_source.low >= next_source.low
 
     @staticmethod
     def _can_merge_inside(curr_source: Tuple, next_source: Tuple) -> bool:

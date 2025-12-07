@@ -95,26 +95,24 @@ class Chan(Signal):
             'exit_high': df['high'].values[1::2],
             'entry_low': df['low'].values[::2],
             'exit_low': df['low'].values[1::2],
-            'entry_macd': df['macd'].values[::2],
-            'exit_macd': df['macd'].values[1::2],
             'level': df['level'].values[::2],
             'status': df['status'].values[::2]
         })
         df['high'] = df['entry_high'].fillna(df['exit_high'])
         df['low'] = df['entry_low'].fillna(df['exit_low'])
         df.set_index('datetime', inplace=True)
-        return df[['end', 'high', 'low', 'entry_macd', 'exit_macd', 'level', 'status']]
+        return df[['end', 'high', 'low', 'level', 'status']]
 
     @staticmethod
     def _format_trends(df: pd.DataFrame) -> pd.DataFrame:
         df = pd.DataFrame({
             'datetime': df.index.values[::2],
             'end': df.index.values[1::2],
-            'entry': df['price'].values[::2],
-            'exit': df['price'].values[1::2]
+            'open': df['price'].values[::2],
+            'close': df['price'].values[1::2]
         })
         df.set_index('datetime', inplace=True)
-        return df[['end', 'entry', 'exit']]
+        return df[['end', 'open', 'close']]
 
     @staticmethod
     def _format_signals(df: pd.DataFrame, name: str) -> pd.DataFrame:

@@ -20,7 +20,9 @@ class Segment(Stroke):
             return
 
         strokes = list(stroke_df.itertuples())
-        self.segments[interval] = self._form_segments(strokes)
+
+        segment_df = self._form_segments(strokes)
+        self.segments[interval] = segment_df
 
     def _form_segments(self, strokes: List) -> Optional[pd.DataFrame]:
         rows, temps = [], []

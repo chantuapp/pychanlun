@@ -26,13 +26,15 @@ class Pivot(Segment):
         source_df = self.sources[interval]
         stroke_df = self.strokes[interval]
         if source_df is not None and stroke_df is not None:
-            self.stroke_pivots[interval] = self._identify_pivots(stroke_df, source_df)
+            stroke_pivot_df = self._identify_pivots(stroke_df, source_df)
+            self.stroke_pivots[interval] = stroke_pivot_df
         else:
             self.stroke_pivots[interval] = None
 
         segment_df = self.segments[interval]
         if source_df is not None and segment_df is not None:
-            self.segment_pivots[interval] = self._identify_pivots(segment_df, source_df)
+            segment_pivot_df = self._identify_pivots(segment_df, source_df)
+            self.segment_pivots[interval] = segment_pivot_df
         else:
             self.segment_pivots[interval] = None
 
@@ -41,6 +43,7 @@ class Pivot(Segment):
         segment_df['price'] = segment_df['macd'] = segment_df['level'] = segment_df['status'] = 0
 
         segments = list(segment_df.itertuples())
+
         rows = self._process_pivots(segments)
         self._merge_overlapping_pivots(rows)
 
@@ -49,6 +52,7 @@ class Pivot(Segment):
 
     def _process_pivots(self, segments: List) -> List:
         rows = []
+
         index = 0
         while index < len(segments) - 4:
             entry_segment = segments[index]
@@ -56,10 +60,7 @@ class Pivot(Segment):
             range_3 = self._get_range(segments, index + 3)
             pivot = self._calculate_pivot_zone(range_1, range_3)
 
-            if not self._is_valid_pivot(pivot):
-                index += 1
-                continue
-            if not self._can_initiate_pivot(pivot, entry_segment):
+            if not self._is_valid_pivot(pivot) and not self._can_initiate_pivot(pivot, entry_segment):
                 index += 1
                 continue
 
@@ -70,6 +71,7 @@ class Pivot(Segment):
             rows.append(range_1.start)
             rows.append(exit_segment)
             index += length + 4
+
         return rows
 
     def _get_range(self, segments: List, index: int) -> Range:
@@ -166,7 +168,8 @@ class Pivot(Segment):
             self._set_pivot_macd(last, None, source_df)
             rows[-1] = last.end
 
-    def _set_pivot_trend(self, pivot_1: Range, pivot_2: Range, level: int) -> int:
+    @staticmethod
+    def _set_pivot_trend(pivot_1: Range, pivot_2: Range, level: int) -> int:
         if level == 0:
             pivot_1.start = pivot_1.start._replace(level=0)
             pivot_1.end = pivot_1.end._replace(level=1)

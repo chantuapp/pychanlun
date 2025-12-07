@@ -2,7 +2,6 @@ from typing import Dict, Optional, List, Tuple
 
 import numpy as np
 import pandas as pd
-
 from pychanlun.stick import Stick
 
 
@@ -21,10 +20,13 @@ class Fractal(Stick):
             return
 
         sticks = list(stick_df.itertuples())
-        self.fractals[interval] = self._scan_for_fractals(sticks)
+
+        fractal_df = self._scan_for_fractals(sticks)
+        self.fractals[interval] = fractal_df
 
     def _scan_for_fractals(self, sticks: List) -> Optional[pd.DataFrame]:
         rows = []
+
         for index in range(1, len(sticks)):
             prev_stick, curr_stick = sticks[index - 1], sticks[index]
             next_stick = sticks[index + 1] if index < len(sticks) - 1 else None
@@ -42,8 +44,12 @@ class Fractal(Stick):
 
     @staticmethod
     def _is_top_fractal(prev_stick: Tuple, curr_stick: Tuple, next_stick: Tuple) -> bool:
-        return curr_stick.high > prev_stick.high and (next_stick is None or curr_stick.high > next_stick.high)
+        prev_is_low = prev_stick is None or curr_stick.high > prev_stick.high
+        next_is_low = next_stick is None or curr_stick.high > next_stick.high
+        return prev_is_low and next_is_low
 
     @staticmethod
     def _is_bottom_fractal(prev_stick: Tuple, curr_stick: Tuple, next_stick: Tuple) -> bool:
-        return curr_stick.low < prev_stick.low and (next_stick is None or curr_stick.low < next_stick.low)
+        prev_is_high = prev_stick is None or curr_stick.low < prev_stick.low
+        next_is_high = next_stick is None or curr_stick.low < next_stick.low
+        return prev_is_high and next_is_high

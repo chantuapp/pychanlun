@@ -28,10 +28,13 @@ class Stroke(Fractal):
             return
 
         fractals = list(fractal_df.itertuples())
-        self.strokes[interval] = self._form_strokes(fractals)
+
+        stroke_df = self._form_strokes(fractals)
+        self.strokes[interval] = stroke_df
 
     def _form_strokes(self, fractals: List) -> Optional[pd.DataFrame]:
         rows, temps = [], []
+
         for index, fractal in enumerate(fractals):
             if not self.is_top(fractal) and not self.is_bottom(fractal):
                 continue
